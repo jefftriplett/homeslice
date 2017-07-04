@@ -6,6 +6,8 @@ import crayons
 import os
 import sys
 
+from pathlib import Path
+
 from .__version__ import __version__
 
 
@@ -34,18 +36,16 @@ class Context(object):
 
 
 pass_context = click.make_pass_decorator(Context, ensure=True)
-cmd_folder = os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                          'commands'))
+
+cmd_folder = Path(__file__).parent.joinpath('commands')
 
 
 class ComplexCLI(click.MultiCommand):
 
     def list_commands(self, ctx):
         rv = []
-        for filename in os.listdir(cmd_folder):
-            if filename.endswith('.py') and \
-               filename.startswith('cmd_'):
-                rv.append(filename[4:-3])
+        for filename in cmd_folder.glob('cmd_*.py'):
+            rv.append(filename.name[4:-3])
         rv.sort()
         return rv
 
@@ -91,3 +91,7 @@ def cli(ctx, verbose, force, pretend, quiet, skip):
 
 
 click_completion.init()
+
+
+if __name__ == '__main__':
+    cli()

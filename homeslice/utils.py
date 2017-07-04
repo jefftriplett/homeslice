@@ -17,7 +17,7 @@ def do_repo_list():
 
     # Do some extra checks
     repos = []
-    for path in pattern.glob('*/.git'):
+    for path in pattern.rglob('.git'):
         # .git should be a folder
         if not path.is_dir():
             continue
@@ -47,4 +47,4 @@ def do_repos_from_arguments(all, repos):
             click.echo('Either specify repos on the command line or use --all')
             sys.exit(1)
 
-    return [os.path.join(environments.HOMESLICE_REPO, r) for r in repos]
+    return [environments.HOMESLICE_REPO.joinpath(repo) for repo in repos]

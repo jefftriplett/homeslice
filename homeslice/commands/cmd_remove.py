@@ -21,9 +21,9 @@ def cli(context, repo, url, force):
     Remove a repo from your homeslice
     """
 
-    repopath = os.path.join(environments.HOMESLICE_REPO, repo)
+    repopath = environments.HOMESLICE_REPO.joinpath(repo)
 
-    if not os.path.exists(repopath):
+    if not repopath.exists():
         click.echo('No repo "{}" found.'.format(repo))
         # This is an error
         sys.exit(1)
