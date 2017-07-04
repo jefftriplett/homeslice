@@ -55,8 +55,7 @@ class HomesliceCLI(click.MultiCommand):
                 name = name.encode('ascii', 'replace')
             mod = __import__('homeslice.commands.cmd_' + name,
                              None, None, ['cli'])
-        except ImportError as e:
-            ctx.log(e)
+        except ImportError:
             return
         return mod.cli
 
