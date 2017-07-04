@@ -2,8 +2,8 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='pyhome',
-    version='0.2.0',
+    name='homeslice',
+    version='0.1.0',
     description='Dotfile management and synchronisation tool',
     long_description=open('README.rst').read(),
     url='https://github.com/acroz/pyhome',
@@ -28,7 +28,7 @@ setup(
     packages=find_packages(),
     entry_points={
         'console_scripts': [
-          'pyhome=pyhome:cli'
+          'homeslice=homeslice:cli'
         ]
     }
 )
