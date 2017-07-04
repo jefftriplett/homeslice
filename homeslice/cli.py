@@ -73,7 +73,8 @@ class HomesliceCLI(click.MultiCommand):
 @click.version_option(prog_name=crayons.yellow('homeslice'), version=__version__)
 @pass_context
 def cli(ctx, verbose, force, pretend, quiet, skip):
-    """A complex command line interface."""
+    """A dotfile management and synchronisation tool."""
+
     ctx.verbose = verbose
 
     if force is not None:
