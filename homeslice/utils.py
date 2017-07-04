@@ -17,6 +17,7 @@ def do_repo_list():
 
     # Do some extra checks
     repos = []
+    # rglob == '**/.git'
     for path in pattern.rglob('.git'):
         # .git should be a folder
         if not path.is_dir():
