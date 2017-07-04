@@ -40,7 +40,7 @@ pass_context = click.make_pass_decorator(Context, ensure=True)
 cmd_folder = Path(__file__).parent.joinpath('commands')
 
 
-class ComplexCLI(click.MultiCommand):
+class HomesliceCLI(click.MultiCommand):
 
     def list_commands(self, ctx):
         rv = []
@@ -61,7 +61,7 @@ class ComplexCLI(click.MultiCommand):
         return mod.cli
 
 
-@click.command(cls=ComplexCLI, context_settings=CONTEXT_SETTINGS)
+@click.command(cls=HomesliceCLI, context_settings=CONTEXT_SETTINGS)
 @click.option('--force', '-f', 'force', is_flag=True, default=False,
               help='Overwrite files that already exist')
 @click.option('--pretend', '-p', 'pretend', is_flag=True, default=False,
