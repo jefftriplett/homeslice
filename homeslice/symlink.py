@@ -13,9 +13,9 @@ from . import environments
 
 # Files to search for that may contain subdir definitions
 SUBDIR_FILENAMES = [
-    '.subdir',
-    '.homeslice_subdir',
     '.homesick_subdir'
+    '.homeslice_subdir',
+    '.subdir',
 ]
 
 
