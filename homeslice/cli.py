@@ -22,7 +22,7 @@ def do_repo_list():
     """
 
     # Assuming all git repos contain a .git folder
-    pattern = environments.PYHOME_REPO
+    pattern = environments.HOMESLICE_REPO
 
     # Do some extra checks
     repos = []
@@ -45,8 +45,8 @@ def do_repos_from_arguments(all, repos):
         repos = do_repo_list()
 
         if len(repos) == 0:
-            click.echo('No repos have yet been cloned to your pyhome')
-            click.echo('    Repo dir: {}'.format(environments.PYHOME_REPO))
+            click.echo('No repos have yet been cloned to your homeslice')
+            click.echo('    Repo dir: {}'.format(environments.HOMESLICE_REPO))
             sys.exit(1)
 
     else:
@@ -56,16 +56,24 @@ def do_repos_from_arguments(all, repos):
             click.echo('Either specify repos on the command line or use --all')
             sys.exit(1)
 
-    return [os.path.join(environments.PYHOME_REPO, r) for r in repos]
+    return [os.path.join(environments.HOMESLICE_REPO, r) for r in repos]
 
 
 '''A dotfile management and synchronisation tool.'''
 
 
 @click.group()
+@click.option('--force', '-f', 'force', is_flag=True, default=False,
+              help='Overwrite files that already exist')
+@click.option('--pretend', '-p', 'pretend', is_flag=True, default=False,
+              help='Run but do not make any changes')
+@click.option('--quiet', '-q', 'quiet', is_flag=True, default=False,
+              help='Suppress status output')
+@click.option('--skip', '-s', 'skip', is_flag=True, default=False,
+              help='Skip files that already exist')
 @click.version_option(prog_name=crayons.yellow('pipenv'), version=__version__)
 @click.pass_context
-def cli(context):
+def cli(context, force, pretend, quiet, skip):
     pass
 
 
@@ -76,15 +84,15 @@ def cli(context):
               help='do not update submodules')
 def clone(url, name, submodules):
     """
-    Clone a new repo to your pyhome
+    Clone a new repo to your homeslice
     """
 
     # Make sure repo dir exists
-    if not environments.PYHOME_REPO.exists():
-        environments.PYHOME_REPO.mkdir(parents=True, exist_ok=True)
+    if not environments.HOMESLICE_REPO.exists():
+        environments.HOMESLICE_REPO.mkdir(parents=True, exist_ok=True)
 
     click.echo('Cloning repo from {} ...'.format(url))
-    git.clone(environments.PYHOME_REPO, url, name, submodules)
+    git.clone(environments.HOMESLICE_REPO, url, name, submodules)
 
 
 @click.command()
@@ -105,10 +113,10 @@ def link(all, repos):
 @click.command()
 def list():
     """
-    List all existing repos in your pyhome
+    List all existing repos in your homeslice
     """
 
-    click.echo('Current pyhome repos:')
+    click.echo('Current homeslice repos:')
     for repo in do_repo_list():
         click.echo('    {}'.format(repo))
 
@@ -137,10 +145,10 @@ def pull(all, submodules, repos):
               help='confirm the removal of the repo')
 def remove(repo, url, force):
     """
-    Remove a repo from your pyhome
+    Remove a repo from your homeslice
     """
 
-    repopath = os.path.join(environments.PYHOME_REPO, repo)
+    repopath = os.path.join(environments.HOMESLICE_REPO, repo)
 
     if not os.path.exists(repopath):
         click.echo('No repo "{}" found.'.format(repo))

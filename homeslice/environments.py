@@ -10,5 +10,5 @@ from pathlib import Path
 
 
 HOME = Path(os.environ['HOME'])
-PYHOME_ROOT = HOME.joinpath('.config', 'pyhome')
-PYHOME_REPO = PYHOME_ROOT.joinpath('repos')
+HOMESLICE_ROOT = HOME.joinpath('.config', 'homeslice')
+HOMESLICE_REPO = HOMESLICE_ROOT.joinpath('repos')

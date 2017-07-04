@@ -14,7 +14,7 @@ from . import environments
 # Files to search for that may contain subdir definitions
 SUBDIR_FILENAMES = [
     '.subdir',
-    '.pyhome_subdir',
+    '.homeslice_subdir',
     '.homesick_subdir'
 ]
 
