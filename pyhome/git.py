@@ -3,25 +3,33 @@ Provides functional interface to git by running shell commands through the
 subprocess module.
 """
 
+from __future__ import absolute_import
+
+import click
 import os
 import locale
+
 from subprocess import check_output, STDOUT, CalledProcessError
-from pyhome.dircontext import dircontext
+
+from .dircontext import dircontext
+
 
 # Determine system encoding from locale
 SYSENC = locale.getpreferredencoding()
 
+
 class GitException(Exception):
     pass
+
 
 def git(*args):
     """
     Run a git command.
     """
-    
+
     # Construct command list
     cmd = ['git'] + list(args)
-    
+
     # Attempt command and handle errors
     try:
         output = check_output(cmd, stderr=STDOUT)
@@ -31,10 +39,11 @@ def git(*args):
         raise GitException(e.output.decode(SYSENC).strip())
     finally:
         pass
-    
+
     out = output.decode(SYSENC).strip()
     if len(out) > 0:
-        print(out)
+        click.echo(out)
+
 
 def reponame(url, name=None):
     """
@@ -47,13 +56,14 @@ def reponame(url, name=None):
         name = name[:-4]
     return name
 
+
 def clone(parent, url, name=None, submodules=True):
     """
     Clone a git repo.
     """
 
     subcmd = ['clone', url]
-    
+
     if name is not None:
         subcmd.append(name)
 
@@ -63,6 +73,7 @@ def clone(parent, url, name=None, submodules=True):
         if submodules:
             with dircontext(reponame(url, name)):
                 git('submodule', 'update', '--init')
+
 
 def pull(repo, submodules=True):
     """

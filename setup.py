@@ -28,7 +28,7 @@ setup(
     packages=find_packages(),
     entry_points={
         'console_scripts': [
-          'pyhome=pyhome.__main__:main'
+          'pyhome=pyhome:cli'
         ]
     }
 )
