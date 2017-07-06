@@ -18,6 +18,7 @@ with codecs.open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
 required = [
     'click',
     'click_completion',
+    'click-log',
     'crayons',
 ]
 

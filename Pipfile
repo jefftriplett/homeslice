@@ -6,6 +6,7 @@ verify_ssl = true
 click = "*"
 click-completion = "*"
 crayons = "*"
+click-log = "*"
 
 [dev-packages]
 ipython = "*"

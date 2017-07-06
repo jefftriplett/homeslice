@@ -1,6 +1,8 @@
 from __future__ import absolute_import
 
 import click
+import click_log
+import logging
 import shutil
 import sys
 
@@ -9,7 +11,12 @@ from .. import symlink
 from ..cli import pass_context
 
 
+logger = logging.getLogger(__name__)
+
+
 @click.command()
+@click_log.simple_verbosity_option()
+@click_log.init(__name__)
 @click.argument('repo', nargs=1)
 @click.argument('url', nargs=1, required=False)
 @click.option('--force', '-f', 'force', is_flag=True, default=False,
