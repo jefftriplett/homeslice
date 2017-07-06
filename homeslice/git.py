@@ -43,6 +43,7 @@ def git(*args):
     out = output.decode(SYSENC).strip()
     if len(out) > 0:
         click.echo(out)
+    return out
 
 
 def reponame(url, name=None):
@@ -62,7 +63,13 @@ def clone(parent, url, name=None, submodules=True):
     Clone a git repo.
     """
 
-    subcmd = ['clone', url]
+    subcmd = [
+        'clone',
+        '-q',
+        '--config',
+        'push.default=upstream',
+        '--recursiveurl'
+    ]
 
     if name is not None:
         subcmd.append(name)
@@ -73,6 +80,16 @@ def clone(parent, url, name=None, submodules=True):
         if submodules:
             with dircontext(reponame(url, name)):
                 git('submodule', 'update', '--init')
+
+
+def config(repo):
+    cmd = [
+        'config',
+        'remote.origin.url',
+    ]
+
+    with dircontext(repo):
+        return git(*cmd)
 
 
 def pull(repo, submodules=True):
