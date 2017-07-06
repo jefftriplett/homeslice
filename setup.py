@@ -29,7 +29,7 @@ if sys.version_info < (2, 7):
 setup(
     name='homeslice',
     version=about['__version__'],
-    description='Dotfile management and synchronisation tool',
+    description='dotfiles and :pizza: management',
     long_description=long_description,
     url='https://github.com/jefftriplett/homeslice',
     author='Jeff Triplett',

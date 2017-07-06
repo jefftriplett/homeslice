@@ -1,6 +1,6 @@
 # homeslice
 
-A dotfile management and synchronisation tool.
+dotfiles and :pizza: management
 
 [![image][homesick_pypi]][homesick_pypi_web] [![image][homesick_license]][homesick_license_web]
 
