@@ -2,9 +2,7 @@
 
 A dotfile management and synchronisation tool.
 
-[![image](http://img.shields.io/pypi/v/homeslice.svg)](https://pypi.python.org/pypi/homeslice)
-
-[![image](http://img.shields.io/badge/license-MIT-green.svg)](https://github.com/acroz/homeslice/blob/master/LICENSE)
+[![image](http://img.shields.io/pypi/v/homeslice.svg)](https://pypi.python.org/pypi/homeslice) [![image](http://img.shields.io/badge/license-MIT-green.svg)](https://github.com/acroz/homeslice/blob/master/LICENSE)
 
 Homeslice is originally based on [pyhome][pyhome] by Andrew Crozier.
 
