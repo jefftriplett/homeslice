@@ -67,7 +67,8 @@ def clone(parent, url, name=None, submodules=True):
         '-q',
         '--config',
         'push.default=upstream',
-        '--recursiveurl'
+        '--recursive',
+        url,
     ]
 
     if name is not None:
