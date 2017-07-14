@@ -12,7 +12,12 @@ with open(os.path.join(here, 'homeslice', '__version__.py')) as f:
     exec(f.read(), about)
 
 with codecs.open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
-    long_description = '\n' + f.read()
+    readme = f.read()
+
+with codecs.open(os.path.join(here, 'HISTORY.txt'), encoding='utf-8') as f:
+    history = f.read()
+
+long_description = readme + '\n\n' + history
 
 
 required = [
