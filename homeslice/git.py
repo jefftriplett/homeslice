@@ -2,17 +2,16 @@
 Provides functional interface to git by running shell commands through the
 subprocess module.
 """
-
 from __future__ import absolute_import
 
 import click
-import os
 import locale
+import os
 
-from subprocess import check_output, STDOUT, CalledProcessError
+from subprocess import STDOUT, CalledProcessError, check_output
+
 
 from .dircontext import dircontext
-
 
 # Determine system encoding from locale
 SYSENC = locale.getpreferredencoding()

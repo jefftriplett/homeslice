@@ -1,7 +1,6 @@
 """
 Some simple settings for use in other parts of the tool.
 """
-
 from __future__ import absolute_import
 
 import os
