@@ -2,7 +2,7 @@ import codecs
 import os
 import sys
 
-from setuptools import find_packages, setup
+from setuptools import setup
 
 
 here = os.path.abspath(os.path.dirname(__file__))
@@ -34,7 +34,10 @@ setup(
     url='https://github.com/jefftriplett/homeslice',
     author='Jeff Triplett',
     author_email='jeff.triplett@gmail.com',
-    packages=find_packages(),
+    packages=[
+        'homeslice',
+        'homeslice.commands',
+    ],
     entry_points={
         'console_scripts': [
             'homeslice=homeslice:cli'
