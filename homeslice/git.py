@@ -62,7 +62,7 @@ def clone(parent, url, name=None, submodules=True):
     Clone a git repo.
     """
 
-    subcmd = [
+    cmd = [
         'clone',
         '-q',
         '--config',
@@ -71,10 +71,10 @@ def clone(parent, url, name=None, submodules=True):
     ]
 
     if name is not None:
-        subcmd.append(name)
+        cmd.append(name)
 
     with dircontext(parent):
-        git(*subcmd)
+        git(*cmd)
 
         if submodules:
             with dircontext(reponame(url, name)):
