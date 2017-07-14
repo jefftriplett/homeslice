@@ -7,7 +7,3 @@ click = "*"
 click-completion = "*"
 click-log = "*"
 crayons = "*"
-
-[dev-packages]
-ipython = "*"
-flit = "*"

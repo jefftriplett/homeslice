@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "cb65967bdf3a7372749ce6144be4ee63f412aeeac624342fda3a2b58b1c43c15"
+            "sha256": "ba1f6e3a93793f197bfec756ef6683420ab05eca5ee796b11cc9d9d7aa29b45a"
         },
         "requires": {},
         "sources": [
@@ -11,6 +11,31 @@
             }
         ]
     },
-    "default": {},
+    "default": {
+        "click": {
+            "version": "==6.7"
+        },
+        "click-completion": {
+            "version": "==0.2.1"
+        },
+        "click-log": {
+            "version": "==0.1.8"
+        },
+        "colorama": {
+            "version": "==0.3.9"
+        },
+        "crayons": {
+            "version": "==0.1.2"
+        },
+        "jinja2": {
+            "version": "==2.9.6"
+        },
+        "markupsafe": {
+            "version": "==1.0"
+        },
+        "six": {
+            "version": "==1.10.0"
+        }
+    },
     "develop": {}
 }
