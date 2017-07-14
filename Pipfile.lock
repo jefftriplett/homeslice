@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "ba1f6e3a93793f197bfec756ef6683420ab05eca5ee796b11cc9d9d7aa29b45a"
+            "sha256": "f2280d1b60e593583fe951aebdedbd1ed4603ba305edc9d8b296c0613d321a75"
         },
         "requires": {},
         "sources": [
@@ -37,5 +37,42 @@
             "version": "==1.10.0"
         }
     },
-    "develop": {}
+    "develop": {
+        "bumpversion": {
+            "version": "==0.5.3"
+        },
+        "certifi": {
+            "version": "==2017.4.17"
+        },
+        "chardet": {
+            "version": "==3.0.4"
+        },
+        "check-manifest": {
+            "version": "==0.35"
+        },
+        "idna": {
+            "version": "==2.5"
+        },
+        "pkginfo": {
+            "version": "==1.4.1"
+        },
+        "requests": {
+            "version": "==2.18.1"
+        },
+        "requests-toolbelt": {
+            "version": "==0.8.0"
+        },
+        "setuptools": {
+            "version": "==36.2.0"
+        },
+        "tqdm": {
+            "version": "==4.14.0"
+        },
+        "twine": {
+            "version": "==1.9.1"
+        },
+        "urllib3": {
+            "version": "==1.21.1"
+        }
+    }
 }

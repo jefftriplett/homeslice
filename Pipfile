@@ -11,3 +11,4 @@ crayons = "*"
 [dev-packages]
 check-manifest = "*"
 twine = "*"
+bumpversion = "*"
