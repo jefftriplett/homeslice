@@ -5,8 +5,9 @@ verify_ssl = true
 [packages]
 click = "*"
 click-completion = "*"
-crayons = "*"
 click-log = "*"
+crayons = "*"
 
 [dev-packages]
 ipython = "*"
+flit = "*"

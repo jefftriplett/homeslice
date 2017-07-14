@@ -1,5 +1,3 @@
-from .cli import cli
+"""dotfiles and :pizza: management"""
 
-
-if __name__ == '__main__':
-    cli()
+from .__version__ import __version__

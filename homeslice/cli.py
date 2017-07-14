@@ -60,6 +60,7 @@ class HomesliceCLI(click.MultiCommand):
         return mod.cli
 
 
+# @click.group()
 @click.command(cls=HomesliceCLI, context_settings=CONTEXT_SETTINGS)
 @click.option('--force', '-f', 'force', is_flag=True, default=False,
               help='Overwrite files that already exist')
