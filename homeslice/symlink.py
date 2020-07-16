@@ -13,14 +13,14 @@ from . import environments
 
 # Files to search for that may contain subdir definitions
 SUBDIR_FILENAMES = [
-    '.homesick_subdir'
-    '.homeslice_subdir',
-    '.subdir',
+    ".homesick_subdir",
+    ".homeslice_subdir",
+    ".subdir",
 ]
 
 
 def overwrite_prompt():
-    if click.confirm('Overwrite'):
+    if click.confirm("Overwrite"):
         return True
     return False
 
@@ -39,15 +39,15 @@ def create_single_symlink(linkpath, targetpath):
         if os.path.islink(linkpath):
 
             # Does it point to the right place?
-            if (os.path.exists(linkpath) and os.path.samefile(linkpath, targetpath)):
-                click.echo('Unchanged: {} -> {}'.format(linkpath, targetpath))
+            if os.path.exists(linkpath) and os.path.samefile(linkpath, targetpath):
+                click.echo("Unchanged: {} -> {}".format(linkpath, targetpath))
                 return
 
             else:
-                click.echo('Conflict: {} -> {}'.format(linkpath, targetpath))
-                click.echo('          {}'.format(linkpath))
-                click.echo('              currently points to')
-                click.echo('          {}'.format(os.readlink(linkpath)))
+                click.echo("Conflict: {} -> {}".format(linkpath, targetpath))
+                click.echo("          {}".format(linkpath))
+                click.echo("              currently points to")
+                click.echo("          {}".format(os.readlink(linkpath)))
 
                 if overwrite_prompt():
                     os.unlink(linkpath)
@@ -55,18 +55,18 @@ def create_single_symlink(linkpath, targetpath):
                     create = False
 
         else:
-            click.echo('Conflict: {} -> {}'.format(linkpath, targetpath))
-            click.echo('          {}'.format(linkpath))
+            click.echo("Conflict: {} -> {}".format(linkpath, targetpath))
+            click.echo("          {}".format(linkpath))
 
             if os.path.isdir(linkpath):
-                click.echo('              exists and is a directory')
+                click.echo("              exists and is a directory")
                 if overwrite_prompt():
                     shutil.rmtree(linkpath)
                 else:
                     create = False
 
             else:
-                click.echo('              exists')
+                click.echo("              exists")
                 if overwrite_prompt():
                     os.remove(linkpath)
                 else:
@@ -74,7 +74,7 @@ def create_single_symlink(linkpath, targetpath):
 
     if create:
         os.symlink(targetpath, linkpath)
-        click.echo('Linked:   {} -> {}'.format(linkpath, targetpath))
+        click.echo("Linked:   {} -> {}".format(linkpath, targetpath))
 
 
 def clear_single_symlink(linkpath, targetpath):
@@ -87,19 +87,19 @@ def clear_single_symlink(linkpath, targetpath):
         pass
 
     elif not os.path.islink(linkpath):
-        click.echo('Skipping: {} -> {}'.format(linkpath, targetpath))
-        click.echo('          {}'.format(linkpath))
-        click.echo('              is not a link')
+        click.echo("Skipping: {} -> {}".format(linkpath, targetpath))
+        click.echo("          {}".format(linkpath))
+        click.echo("              is not a link")
 
     elif not os.path.samefile(linkpath, targetpath):
-        click.echo('Skipping: {} -> {}'.format(linkpath, targetpath))
-        click.echo('          {}'.format(linkpath))
-        click.echo('              does not point to')
-        click.echo('          {}'.format(os.readlink(linkpath)))
+        click.echo("Skipping: {} -> {}".format(linkpath, targetpath))
+        click.echo("          {}".format(linkpath))
+        click.echo("              does not point to")
+        click.echo("          {}".format(os.readlink(linkpath)))
 
     else:
         os.unlink(linkpath)
-        click.echo('Unlinked: {} -> {}'.format(linkpath, targetpath))
+        click.echo("Unlinked: {} -> {}".format(linkpath, targetpath))
 
 
 def splitall(path):
@@ -150,8 +150,7 @@ def linkable_files(directory, subdirs=[]):
                     if len(remaining) > 0:
                         children.append(os.path.join(*remaining))
 
-            for subfile in linkable_files(os.path.join(directory, file),
-                                          children):
+            for subfile in linkable_files(os.path.join(directory, file), children):
                 yield os.path.join(file, subfile)
 
         else:
@@ -185,7 +184,7 @@ def repo_symlink_map(repo, function):
     Map a function to all linkable file (from, to) pairs in this repo.
     """
 
-    home = os.path.join(repo, 'home')
+    home = os.path.join(repo, "home")
 
     for fname in linkable_files(home, load_subdirs(repo)):
         linkpath = os.path.join(environments.HOME, fname)

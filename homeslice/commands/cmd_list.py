@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+import blindspin
 import click
 import click_log
 import logging
@@ -21,12 +22,10 @@ def cli(context):
     List all existing repos in your homeslice
     """
 
-    click.echo('Current homeslice repos:')
+    click.echo("Current homeslice repos:")
     repos = do_repos_from_arguments(True, None)
 
-    for repo in repos:
-        config = git.config(repo)
-        click.echo('    {} {}'.format(
-            str(repo).split('/')[-1],
-            config,
-        ))
+    with blindspin.spinner():
+        for repo in repos:
+            config = git.config(repo)
+            click.echo("    {} {}".format(str(repo).split("/")[-1], config,))

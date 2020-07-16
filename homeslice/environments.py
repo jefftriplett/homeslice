@@ -9,8 +9,8 @@ import sys
 from pathlib import Path
 
 
-HOME = Path(os.environ['HOME'])
-HOMESLICE_ROOT = HOME.joinpath('.config', 'homeslice')
-HOMESLICE_REPO = HOMESLICE_ROOT.joinpath('repos')
+HOME = Path(os.environ["HOME"])
+HOMESLICE_ROOT = HOME.joinpath(".config", "homeslice")
+HOMESLICE_REPO = HOMESLICE_ROOT.joinpath("repos")
 
 PY2 = sys.version_info[0] == 2

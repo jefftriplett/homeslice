@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+import blindspin
 import click
 import click_log
 import logging
@@ -15,10 +16,15 @@ logger = logging.getLogger(__name__)
 @click.command()
 @click_log.simple_verbosity_option()
 @click_log.init(__name__)
-@click.argument('url', nargs=1)
-@click.argument('name', nargs=1, required=False)
-@click.option('--no-submodules', 'submodules', is_flag=True, default=False,
-              help='do not update submodules')
+@click.argument("url", nargs=1)
+@click.argument("name", nargs=1, required=False)
+@click.option(
+    "--no-submodules",
+    "submodules",
+    is_flag=True,
+    default=False,
+    help="do not update submodules",
+)
 @pass_context
 def cli(context, url, name, submodules):
     """
@@ -29,5 +35,6 @@ def cli(context, url, name, submodules):
     if not environments.HOMESLICE_REPO.exists():
         environments.HOMESLICE_REPO.mkdir(parents=True, exist_ok=True)
 
-    click.echo('Cloning repo from {} ...'.format(url))
-    git.clone(environments.HOMESLICE_REPO, url, name, submodules)
+    click.echo("Cloning repo from {} ...".format(url))
+    with blindspin.spinner():
+        git.clone(environments.HOMESLICE_REPO, url, name, submodules)

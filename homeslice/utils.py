@@ -18,7 +18,7 @@ def do_repo_list():
     # Do some extra checks
     repos = []
     # rglob == '**/.git'
-    for path in pattern.rglob('.git'):
+    for path in pattern.rglob(".git"):
         # .git should be a folder
         if not path.is_dir():
             continue
@@ -37,15 +37,15 @@ def do_repos_from_arguments(all, repos):
         repos = do_repo_list()
 
         if len(repos) == 0:
-            click.echo('No repos have yet been cloned to your homeslice')
-            click.echo('    Repo dir: {}'.format(environments.HOMESLICE_REPO))
+            click.echo("No repos have yet been cloned to your homeslice")
+            click.echo("    Repo dir: {}".format(environments.HOMESLICE_REPO))
             sys.exit(1)
 
     else:
         repos = repos
 
         if len(repos) == 0:
-            click.echo('Either specify repos on the command line or use --all')
+            click.echo("Either specify repos on the command line or use --all")
             sys.exit(1)
 
     return [environments.HOMESLICE_REPO.joinpath(repo) for repo in repos]

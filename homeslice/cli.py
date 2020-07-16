@@ -11,11 +11,10 @@ from .__version__ import __version__
 from .environments import PY2
 
 
-CONTEXT_SETTINGS = dict(auto_envvar_prefix='HOMESLICE')
+CONTEXT_SETTINGS = dict(auto_envvar_prefix="HOMESLICE")
 
 
 class Context(object):
-
     def __init__(self):
         self.verbose = False
         self.force = False
@@ -37,14 +36,13 @@ class Context(object):
 
 pass_context = click.make_pass_decorator(Context, ensure=True)
 
-cmd_folder = Path(__file__).parent.joinpath('commands')
+cmd_folder = Path(__file__).parent.joinpath("commands")
 
 
 class HomesliceCLI(click.MultiCommand):
-
     def list_commands(self, ctx):
         rv = []
-        for filename in cmd_folder.glob('cmd_*.py'):
+        for filename in cmd_folder.glob("cmd_*.py"):
             rv.append(filename.name[4:-3])
         rv.sort()
         return rv
@@ -52,9 +50,8 @@ class HomesliceCLI(click.MultiCommand):
     def get_command(self, ctx, name):
         try:
             if PY2:
-                name = name.encode('ascii', 'replace')
-            mod = __import__('homeslice.commands.cmd_' + name,
-                             None, None, ['cli'])
+                name = name.encode("ascii", "replace")
+            mod = __import__("homeslice.commands.cmd_" + name, None, None, ["cli"])
         except ImportError:
             return
         return mod.cli
@@ -62,16 +59,35 @@ class HomesliceCLI(click.MultiCommand):
 
 # @click.group()
 @click.command(cls=HomesliceCLI, context_settings=CONTEXT_SETTINGS)
-@click.option('--force', '-f', 'force', is_flag=True, default=False,
-              help='Overwrite files that already exist')
-@click.option('--pretend', '-p', 'pretend', is_flag=True, default=False,
-              help='Run but do not make any changes')
-@click.option('--quiet', '-q', 'quiet', is_flag=True, default=False,
-              help='Suppress status output')
-@click.option('--skip', '-s', 'skip', is_flag=True, default=False,
-              help='Skip files that already exist')
-@click.option('-v', '--verbose', is_flag=True, help='Enables verbose mode.')
-@click.version_option(prog_name=crayons.yellow('homeslice'), version=__version__)
+@click.option(
+    "--force",
+    "-f",
+    "force",
+    is_flag=True,
+    default=False,
+    help="Overwrite files that already exist",
+)
+@click.option(
+    "--pretend",
+    "-p",
+    "pretend",
+    is_flag=True,
+    default=False,
+    help="Run but do not make any changes",
+)
+@click.option(
+    "--quiet", "-q", "quiet", is_flag=True, default=False, help="Suppress status output"
+)
+@click.option(
+    "--skip",
+    "-s",
+    "skip",
+    is_flag=True,
+    default=False,
+    help="Skip files that already exist",
+)
+@click.option("-v", "--verbose", is_flag=True, help="Enables verbose mode.")
+@click.version_option(prog_name=crayons.yellow("homeslice"), version=__version__)
 @pass_context
 def cli(ctx, verbose, force, pretend, quiet, skip):
     """A dotfile management and synchronisation tool."""
@@ -94,5 +110,5 @@ def cli(ctx, verbose, force, pretend, quiet, skip):
 click_completion.init()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cli()

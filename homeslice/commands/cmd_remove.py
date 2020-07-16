@@ -17,10 +17,16 @@ logger = logging.getLogger(__name__)
 @click.command()
 @click_log.simple_verbosity_option()
 @click_log.init(__name__)
-@click.argument('repo', nargs=1)
-@click.argument('url', nargs=1, required=False)
-@click.option('--force', '-f', 'force', is_flag=True, default=False,
-              help='confirm the removal of the repo')
+@click.argument("repo", nargs=1)
+@click.argument("url", nargs=1, required=False)
+@click.option(
+    "--force",
+    "-f",
+    "force",
+    is_flag=True,
+    default=False,
+    help="confirm the removal of the repo",
+)
 @pass_context
 def cli(context, repo, url, force):
     """
@@ -41,8 +47,8 @@ def cli(context, repo, url, force):
 
     else:
         # Actually delete the thing
-        click.echo('Removing repo {} ...'.format(repopath))
-        click.echo(' - Unlinking ...')
+        click.echo("Removing repo {} ...".format(repopath))
+        click.echo(" - Unlinking ...")
         symlink.repo_clear_symlinks(repopath)
-        click.echo(' - Removing directory ...')
+        click.echo(" - Removing directory ...")
         shutil.rmtree(repopath)

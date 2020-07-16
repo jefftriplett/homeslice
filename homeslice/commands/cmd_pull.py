@@ -15,10 +15,15 @@ logger = logging.getLogger(__name__)
 @click.command()
 @click_log.simple_verbosity_option()
 @click_log.init(__name__)
-@click.option('--all', '-a', is_flag=True, help='link all repos')
-@click.option('--no-submodules', 'submodules', is_flag=True, default=False,
-              help='do not update submodules')
-@click.argument('repos', nargs=-1)
+@click.option("--all", "-a", is_flag=True, help="link all repos")
+@click.option(
+    "--no-submodules",
+    "submodules",
+    is_flag=True,
+    default=False,
+    help="do not update submodules",
+)
+@click.argument("repos", nargs=-1)
 @pass_context
 def cli(context, all, submodules, repos):
     """
@@ -28,5 +33,5 @@ def cli(context, all, submodules, repos):
     repos = do_repos_from_arguments(all, repos)
 
     for repo in repos:
-        click.echo('\nPulling repo in {} ...'.format(repo))
+        click.echo("\nPulling repo in {} ...".format(repo))
         git.pull(repo, submodules)

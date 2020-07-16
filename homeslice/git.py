@@ -4,7 +4,7 @@ subprocess module.
 """
 from __future__ import absolute_import
 
-import click
+# import click
 import locale
 import os
 
@@ -27,21 +27,21 @@ def git(*args):
     """
 
     # Construct command list
-    cmd = ['git'] + list(args)
+    cmd = ["git"] + list(args)
 
     # Attempt command and handle errors
     try:
         output = check_output(cmd, stderr=STDOUT)
     except OSError as e:
-        raise GitException('git command not found')
+        raise GitException("git command not found")
     except CalledProcessError as e:
         raise GitException(e.output.decode(SYSENC).strip())
     finally:
         pass
 
     out = output.decode(SYSENC).strip()
-    if len(out) > 0:
-        click.echo(out)
+    # if len(out) > 0:
+    #     click.echo(out)
     return out
 
 
@@ -52,7 +52,7 @@ def reponame(url, name=None):
     if name is not None:
         return name
     name = os.path.basename(url)
-    if name.endswith('.git'):
+    if name.endswith(".git"):
         name = name[:-4]
     return name
 
@@ -63,11 +63,11 @@ def clone(parent, url, name=None, submodules=True):
     """
 
     cmd = [
-        'clone',
-        '-q',
-        '--config',
-        'push.default=upstream',
-        '--recursive',
+        "clone",
+        "-q",
+        "--config",
+        "push.default=upstream",
+        "--recursive",
         url,
     ]
 
@@ -79,13 +79,13 @@ def clone(parent, url, name=None, submodules=True):
 
         if submodules:
             with dircontext(reponame(url, name)):
-                git('submodule', 'update', '--init')
+                git("submodule", "update", "--init")
 
 
 def config(repo):
     cmd = [
-        'config',
-        'remote.origin.url',
+        "config",
+        "remote.origin.url",
     ]
 
     with dircontext(repo):
@@ -97,6 +97,6 @@ def pull(repo, submodules=True):
     Update a repo.
     """
     with dircontext(repo):
-        git('pull')
+        git("pull")
         if submodules:
-            git('submodule', 'update', '--init')
+            git("submodule", "update", "--init")
