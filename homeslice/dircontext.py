@@ -2,7 +2,6 @@
 Directory context manager for the safe execution of a function with a temporary
 changed working directory.
 """
-from __future__ import absolute_import
 
 import os
 

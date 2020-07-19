@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import click
 import click_log
 import logging

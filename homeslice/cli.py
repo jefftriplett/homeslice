@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import click
 import click_completion
 import crayons
@@ -8,7 +6,6 @@ import sys
 from pathlib import Path
 
 from .__version__ import __version__
-from .environments import PY2
 
 
 CONTEXT_SETTINGS = dict(auto_envvar_prefix="HOMESLICE")
@@ -49,8 +46,6 @@ class HomesliceCLI(click.MultiCommand):
 
     def get_command(self, ctx, name):
         try:
-            if PY2:
-                name = name.encode("ascii", "replace")
             mod = __import__("homeslice.commands.cmd_" + name, None, None, ["cli"])
         except ImportError:
             return

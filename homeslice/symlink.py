@@ -2,8 +2,6 @@
 Symbolic link creation and handling.
 """
 
-from __future__ import absolute_import
-
 import click
 import os
 import shutil

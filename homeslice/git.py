@@ -2,9 +2,7 @@
 Provides functional interface to git by running shell commands through the
 subprocess module.
 """
-from __future__ import absolute_import
 
-# import click
 import locale
 import os
 
