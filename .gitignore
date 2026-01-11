@@ -1,10 +1,11 @@
-# Python auto generated files
+# Python
 *.pyc
+__pycache__/
+.venv/
 
-# Editor swapfiles
+# Editor
 .*.swp
+*~
 
-# Setuptools auto generated directories
-/build
-/dist
-*.egg-info
+# uv
+.python-version

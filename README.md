@@ -1,22 +1,95 @@
 # homeslice
 
-dotfiles and :pizza: management
+A dotfile management tool that symlinks files from local directories to your home directory.
 
-[![image][homesick_pypi]][homesick_pypi_web] [![image][homesick_license]][homesick_license_web]
+## Installation
 
-Homeslice is originally based on [pyhome][pyhome] by Andrew Crozier.
+Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
-## TODO 
+```bash
+# Install from source
+uv tool install .
 
-This is a simple python utility with similar functionality to the
-functionality of the [`homesick`][homesick] ruby utility, providing a simple
-interface for managing dotfiles via git repositories.
+# Or run directly without installing
+uv run homeslice --help
+```
 
-This port exists because I wanted an easier to extend version of [homesick][homesick] and [pyhome][pyhome].
+## Quick Start
 
-[homesick]: https://github.com/technicalpickles/homesick
-[homesick_license]: http://img.shields.io/badge/license-MIT-green.svg
-[homesick_license_web]: https://github.com/jefftriplett/homeslice/blob/master/LICENSE
-[homesick_pypi]: http://img.shields.io/pypi/v/homeslice.svg
-[homesick_pypi_web]: https://pypi.python.org/pypi/homeslice
-[pyhome]: https://github.com/acroz/pyhome
+```bash
+# Initialize config
+homeslice init
+
+# Add a dotfiles directory
+homeslice add ~/dotfiles
+
+# Create symlinks
+homeslice link
+
+# Track a new file (moves it to repo and creates symlink)
+homeslice track ~/.bashrc dotfiles
+```
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `init` | Create config directory |
+| `add <path>` | Add a dotfiles directory to track |
+| `remove <name>` | Remove from tracking |
+| `list` | List tracked directories |
+| `link [repos...]` | Create symlinks to home |
+| `unlink [repos...]` | Remove symlinks |
+| `track <file> <repo>` | Move file into repo, create symlink |
+| `untrack <file>` | Move file back, remove from repo |
+| `show <name>` | Show repo details and linkable files |
+| `ignore <pattern>` | Add ignore pattern |
+
+## How It Works
+
+Homeslice tracks local directories containing dotfiles. Each directory should have a `home/` subdirectory with files structured as they should appear in your home directory:
+
+```
+~/dotfiles/
+  home/
+    .bashrc
+    .config/
+      git/
+        config
+```
+
+Running `homeslice link` creates symlinks:
+- `~/.bashrc` → `~/dotfiles/home/.bashrc`
+- `~/.config/git/config` → `~/dotfiles/home/.config/git/config`
+
+If a directory already exists in your home (like `~/.config`), homeslice descends into it rather than replacing it.
+
+## Configuration
+
+Config is stored at `~/.config/homeslice/config.toml`:
+
+```toml
+default_ignore = [".git", ".gitignore", ".gitmodules", "README*", "LICENSE*"]
+
+[repos.dotfiles]
+path = "/Users/you/dotfiles"
+home_dir = "home"
+ignore = []
+```
+
+## Development
+
+```bash
+# Install dependencies
+uv sync
+
+# Run linting
+just lint
+
+# Run the CLI
+uv run homeslice --help
+```
+
+## License
+
+MIT
