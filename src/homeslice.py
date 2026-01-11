@@ -1,7 +1,7 @@
 """
 homeslice - A dotfile management and synchronization tool.
 
-Manages dotfiles by symlinking files from local directories to your home directory.
+Manages dotfiles by symlinking files from a dotfiles directory to your home directory.
 """
 
 from __future__ import annotations
@@ -10,15 +10,13 @@ __version__ = "2026.1.2"
 
 import os
 import shutil
-from fnmatch import fnmatch
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 from pydantic import BaseModel, Field
 from rich import print as rprint
 from rich.console import Console
-from rich.table import Table
 
 try:
     import tomllib
@@ -33,8 +31,9 @@ import tomli_w
 # =============================================================================
 
 HOME = Path.home()
-CONFIG_DIR = HOME / ".config" / "homeslice"
-CONFIG_FILE = CONFIG_DIR / "config.toml"
+GLOBAL_CONFIG_DIR = HOME / ".config" / "homeslice"
+GLOBAL_CONFIG_FILE = GLOBAL_CONFIG_DIR / "config.toml"
+REPO_CONFIG_FILENAME = "homeslice.toml"
 
 console = Console()
 app = typer.Typer(
@@ -49,71 +48,151 @@ app = typer.Typer(
 # =============================================================================
 
 
-class RepoConfig(BaseModel):
-    """Configuration for a single dotfiles directory."""
+class GlobalConfig(BaseModel):
+    """Global homeslice configuration stored in ~/.config/homeslice/config.toml."""
 
-    name: str
-    path: Path
+    repo_path: Path | None = None
+
+
+class IncludeConfig(BaseModel):
+    """Configuration for partial folder tracking."""
+
+    files: list[str] = Field(default_factory=list)
     ignore: list[str] = Field(default_factory=list)
-    home_dir: str = "home"  # subdirectory containing dotfiles to link
 
 
-class Config(BaseModel):
-    """Global homeslice configuration."""
+class RepoConfig(BaseModel):
+    """Repo-specific configuration stored in homeslice.toml."""
 
-    repos: dict[str, RepoConfig] = Field(default_factory=dict)
-    default_ignore: list[str] = Field(
-        default_factory=lambda: [
-            ".git",
-            ".gitignore",
-            ".gitmodules",
-            "README*",
-            "LICENSE*",
-        ]
-    )
+    links: list[str] = Field(default_factory=list)
+    include: dict[str, IncludeConfig] = Field(default_factory=dict)
+    source_dir: str | None = None
 
 
 # =============================================================================
-# Config Management
+# Global Config Management
 # =============================================================================
 
 
-def load_config() -> Config:
-    """Load configuration from TOML file."""
-    if not CONFIG_FILE.exists():
-        return Config()
+def load_global_config() -> GlobalConfig:
+    """Load global configuration from ~/.config/homeslice/config.toml."""
+    if not GLOBAL_CONFIG_FILE.exists():
+        return GlobalConfig()
 
-    with open(CONFIG_FILE, "rb") as f:
+    with open(GLOBAL_CONFIG_FILE, "rb") as f:
         data = tomllib.load(f)
 
-    repos = {}
-    for name, repo_data in data.get("repos", {}).items():
-        repo_data["name"] = name
-        repo_data["path"] = Path(repo_data["path"])
-        repos[name] = RepoConfig(**repo_data)
+    if "repo_path" in data and data["repo_path"]:
+        data["repo_path"] = Path(data["repo_path"])
 
-    return Config(
-        repos=repos,
-        default_ignore=data.get("default_ignore", Config().default_ignore),
-    )
+    return GlobalConfig(**data)
 
 
-def save_config(config: Config) -> None:
-    """Save configuration to TOML file."""
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+def save_global_config(config: GlobalConfig) -> None:
+    """Save global configuration."""
+    GLOBAL_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
-    data: dict = {
-        "default_ignore": config.default_ignore,
-        "repos": {},
-    }
+    data = {}
+    if config.repo_path:
+        data["repo_path"] = str(config.repo_path)
 
-    for name, repo in config.repos.items():
-        repo_data = repo.model_dump(exclude={"name"})
-        repo_data["path"] = str(repo_data["path"])
-        data["repos"][name] = repo_data
-
-    with open(CONFIG_FILE, "wb") as f:
+    with open(GLOBAL_CONFIG_FILE, "wb") as f:
         tomli_w.dump(data, f)
+
+
+# =============================================================================
+# Repo Config Management
+# =============================================================================
+
+
+def find_repo_root_from_cwd() -> Path | None:
+    """Find repo root by looking for homeslice.toml in current or parent dirs."""
+    current = Path.cwd()
+    while current != current.parent:
+        if (current / REPO_CONFIG_FILENAME).exists():
+            return current
+        current = current.parent
+    if (current / REPO_CONFIG_FILENAME).exists():
+        return current
+    return None
+
+
+def get_repo_root() -> Path:
+    """Get repo root from global config or by searching from cwd."""
+    # First try to find from current directory
+    root = find_repo_root_from_cwd()
+    if root:
+        return root
+
+    # Fall back to global config
+    global_config = load_global_config()
+    if global_config.repo_path and global_config.repo_path.exists():
+        if (global_config.repo_path / REPO_CONFIG_FILENAME).exists():
+            return global_config.repo_path
+
+    rprint("[red]Error:[/red] No homeslice repo found.")
+    rprint("  Run 'homeslice init' in your dotfiles directory, or")
+    rprint("  Run 'homeslice init <path>' to set up a repo.")
+    raise typer.Exit(1)
+
+
+def load_repo_config(repo_root: Path) -> RepoConfig:
+    """Load repo configuration from homeslice.toml."""
+    config_file = repo_root / REPO_CONFIG_FILENAME
+    if not config_file.exists():
+        return RepoConfig()
+
+    with open(config_file, "rb") as f:
+        data = tomllib.load(f)
+
+    # Parse include sections
+    include = {}
+    if "include" in data:
+        for path, config in data["include"].items():
+            include[path] = IncludeConfig(**config)
+        del data["include"]
+
+    return RepoConfig(include=include, **data)
+
+
+def save_repo_config(repo_root: Path, config: RepoConfig) -> None:
+    """Save repo configuration to homeslice.toml."""
+    config_file = repo_root / REPO_CONFIG_FILENAME
+
+    data: dict = {"links": config.links}
+
+    if config.source_dir:
+        data["source_dir"] = config.source_dir
+
+    if config.include:
+        data["include"] = {}
+        for path, inc_config in config.include.items():
+            data["include"][path] = inc_config.model_dump(exclude_defaults=True)
+
+    with open(config_file, "wb") as f:
+        tomli_w.dump(data, f)
+
+
+# =============================================================================
+# Path Utilities
+# =============================================================================
+
+
+def get_source_dir(repo_root: Path, config: RepoConfig) -> Path:
+    """Get the source directory within a repo (where dotfiles are stored)."""
+    if config.source_dir:
+        return repo_root / config.source_dir
+    return repo_root
+
+
+def normalize_path(path: str) -> str:
+    """Normalize a path for consistent storage in config."""
+    # Remove leading ./ if present
+    if path.startswith("./"):
+        path = path[2:]
+    # Remove trailing slashes
+    path = path.rstrip("/")
+    return path
 
 
 # =============================================================================
@@ -121,68 +200,39 @@ def save_config(config: Config) -> None:
 # =============================================================================
 
 
-def should_ignore(path: Path, ignore_patterns: list[str]) -> bool:
-    """Check if a path matches any ignore pattern."""
-    name = path.name
-    for pattern in ignore_patterns:
-        if fnmatch(name, pattern):
-            return True
-    return False
-
-
-def get_home_subdir(repo: RepoConfig) -> Path:
-    """Get the home subdirectory within a repo."""
-    return repo.path / repo.home_dir
-
-
-def iter_linkable_files(repo: RepoConfig, config: Config) -> list[tuple[Path, Path]]:
+def iter_linkable_files(
+    repo_root: Path, config: RepoConfig
+) -> list[tuple[Path, Path, str]]:
     """
-    Iterate over files that should be symlinked.
+    Iterate over files that should be symlinked based on config.
 
-    Returns list of (source, target) tuples where:
-    - source: path in the repo's home dir
+    Returns list of (source, target, rel_path) tuples where:
+    - source: path in the repo
     - target: path in user's home dir
+    - rel_path: the path as stored in config (for display)
     """
-    home_dir = get_home_subdir(repo)
-    if not home_dir.exists():
-        return []
-
-    ignore_patterns = config.default_ignore + repo.ignore
+    source_dir = get_source_dir(repo_root, config)
     links = []
 
-    def walk(rel_path: Path = Path(".")):
-        current = home_dir / rel_path
-        for item in sorted(current.iterdir()):
-            item_rel = (
-                rel_path / item.name if rel_path != Path(".") else Path(item.name)
-            )
+    # Process links list
+    for rel_path in config.links:
+        source = source_dir / rel_path
+        target = HOME / rel_path
+        links.append((source, target, rel_path))
 
-            if should_ignore(item, ignore_patterns):
-                continue
+    # Process include sections (partial folder tracking)
+    for folder_path, inc_config in config.include.items():
+        for filename in inc_config.files:
+            rel_path = f"{folder_path}/{filename}"
+            source = source_dir / rel_path
+            target = HOME / rel_path
+            links.append((source, target, rel_path))
 
-            source = home_dir / item_rel
-            target = HOME / item_rel
-
-            if item.is_dir() and not item.is_symlink():
-                # Check if target exists as a real directory - descend into it
-                if target.exists() and target.is_dir() and not target.is_symlink():
-                    walk(item_rel)
-                else:
-                    # Link the whole directory
-                    links.append((source, target))
-            else:
-                links.append((source, target))
-
-    walk()
     return links
 
 
 def create_symlink(source: Path, target: Path, force: bool = False) -> str:
-    """
-    Create a symbolic link.
-
-    Returns status message.
-    """
+    """Create a symbolic link. Returns status message."""
     if target.exists() or target.is_symlink():
         if target.is_symlink():
             current_target = target.resolve()
@@ -203,10 +253,8 @@ def create_symlink(source: Path, target: Path, force: bool = False) -> str:
             else:
                 return "conflict"
 
-    # Ensure parent directory exists
     target.parent.mkdir(parents=True, exist_ok=True)
 
-    # Create relative symlink
     try:
         rel_source = os.path.relpath(source, target.parent)
         target.symlink_to(rel_source)
@@ -216,11 +264,7 @@ def create_symlink(source: Path, target: Path, force: bool = False) -> str:
 
 
 def remove_symlink(source: Path, target: Path) -> str:
-    """
-    Remove a symbolic link if it points to source.
-
-    Returns status message.
-    """
+    """Remove a symbolic link if it points to source. Returns status message."""
     if not target.exists() and not target.is_symlink():
         return "missing"
 
@@ -241,364 +285,345 @@ def remove_symlink(source: Path, target: Path) -> str:
 
 
 @app.command()
-def init():
-    """Initialize homeslice configuration."""
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-
-    if not CONFIG_FILE.exists():
-        save_config(Config())
-        rprint(f"[green]Created config:[/green] {CONFIG_FILE}")
+def init(
+    path: Annotated[
+        Path | None,
+        typer.Argument(help="Path to dotfiles directory (default: current)"),
+    ] = None,
+    source_dir: Annotated[
+        str | None,
+        typer.Option("--source-dir", "-s", help="Subdirectory for dotfiles"),
+    ] = None,
+):
+    """Initialize a homeslice dotfiles repo."""
+    if path is None:
+        repo_root = Path.cwd()
     else:
-        rprint(f"[yellow]Config exists:[/yellow] {CONFIG_FILE}")
+        repo_root = Path(path).expanduser().resolve()
+        if not repo_root.exists():
+            repo_root.mkdir(parents=True)
+            rprint(f"[green]Created:[/green] {repo_root}")
+
+    repo_config_file = repo_root / REPO_CONFIG_FILENAME
+
+    # Create/update repo config
+    if repo_config_file.exists():
+        rprint(f"[dim]Exists:[/dim] {repo_config_file}")
+    else:
+        repo_config = RepoConfig(source_dir=source_dir)
+        save_repo_config(repo_root, repo_config)
+        rprint(f"[green]Created:[/green] {repo_config_file}")
+
+    # Create source directory if specified
+    if source_dir:
+        source_path = repo_root / source_dir
+        if not source_path.exists():
+            source_path.mkdir(parents=True)
+            rprint(f"[green]Created:[/green] {source_path}/")
+        else:
+            rprint(f"[dim]Exists:[/dim] {source_path}/")
+
+    # Update global config to point to this repo
+    global_config = load_global_config()
+    global_config.repo_path = repo_root
+    save_global_config(global_config)
+    rprint(f"[green]Set default repo:[/green] {repo_root}")
 
 
 @app.command()
 def add(
-    path: Annotated[Path, typer.Argument(help="Path to dotfiles directory")],
-    name: Annotated[
-        Optional[str], typer.Option("--name", "-n", help="Name for the repo")
-    ] = None,
-    home_dir: Annotated[
-        str, typer.Option("--home-dir", "-d", help="Subdirectory containing dotfiles")
-    ] = "home",
+    files: Annotated[list[Path], typer.Argument(help="File(s) or directory(s) to add")],
 ):
-    """Add a dotfiles directory to track."""
-    config = load_config()
+    """Move file(s)/directory(s) from $HOME into the repo and create symlink(s)."""
+    repo_root = get_repo_root()
+    config = load_repo_config(repo_root)
+    source_dir = get_source_dir(repo_root, config)
 
-    path = path.expanduser().resolve()
+    modified = False
 
-    if not path.exists():
-        rprint(f"[red]Error:[/red] Path does not exist: {path}")
-        raise typer.Exit(1)
+    for file in files:
+        file = Path(file).expanduser().absolute()
 
-    if name is None:
-        name = path.name
+        if not file.exists() and not file.is_symlink():
+            rprint(f"[red]Error:[/red] Does not exist: {file}")
+            continue
 
-    if name in config.repos:
-        rprint(f"[red]Error:[/red] '{name}' already exists")
-        raise typer.Exit(1)
+        if file.is_symlink():
+            rprint(f"[yellow]Skipping:[/yellow] {file} (already a symlink)")
+            continue
 
-    repo_config = RepoConfig(name=name, path=path, home_dir=home_dir)
-    config.repos[name] = repo_config
-    save_config(config)
+        if not str(file).startswith(str(HOME)):
+            rprint(f"[red]Error:[/red] Must be in home directory: {file}")
+            continue
 
-    rprint(f"[green]Added:[/green] {name} ({path})")
+        rel_path = str(file.relative_to(HOME))
+        target_path = source_dir / rel_path
+
+        if target_path.exists():
+            rprint(f"[yellow]Skipping:[/yellow] {rel_path} (already in repo)")
+            continue
+
+        # Check if already in config
+        normalized = normalize_path(rel_path)
+        if normalized in config.links:
+            rprint(f"[yellow]Skipping:[/yellow] {rel_path} (already tracked)")
+            continue
+
+        # Move file to repo
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(file), str(target_path))
+
+        # Create symlink
+        rel_source = os.path.relpath(target_path, file.parent)
+        file.symlink_to(rel_source)
+
+        # Add to config
+        config.links.append(normalized)
+        modified = True
+
+        rprint(f"[green]Added:[/green] {rel_path}")
+
+    if modified:
+        # Sort links for consistent output
+        config.links.sort()
+        save_repo_config(repo_root, config)
 
 
 @app.command()
 def remove(
-    name: Annotated[str, typer.Argument(help="Name of the repo to remove")],
-    unlink_files: Annotated[
-        bool, typer.Option("--unlink", "-u", help="Also remove symlinks")
-    ] = True,
+    files: Annotated[
+        list[Path],
+        typer.Argument(help="File(s) or directory(s) to remove from tracking"),
+    ],
 ):
-    """Remove a repo from tracking (does not delete the directory)."""
-    config = load_config()
+    """Move file(s)/directory(s) back to $HOME and remove from repo."""
+    repo_root = get_repo_root()
+    config = load_repo_config(repo_root)
+    source_dir = get_source_dir(repo_root, config)
 
-    if name not in config.repos:
-        rprint(f"[red]Error:[/red] '{name}' not found")
-        raise typer.Exit(1)
+    modified = False
 
-    repo = config.repos[name]
+    for file in files:
+        file = Path(file).expanduser().absolute()
 
-    if unlink_files:
-        rprint(f"[blue]Unlinking[/blue] {name}...")
-        _unlink_repo(repo, config)
+        if not file.is_symlink():
+            rprint(f"[red]Error:[/red] Not a symlink: {file}")
+            continue
 
-    del config.repos[name]
-    save_config(config)
+        target = file.resolve()
 
-    rprint(f"[green]Removed:[/green] {name}")
+        try:
+            target.relative_to(source_dir)
+        except ValueError:
+            rprint(f"[red]Error:[/red] Not tracked by this repo: {file}")
+            continue
 
+        rel_path = str(file.relative_to(HOME))
+        normalized = normalize_path(rel_path)
 
-@app.command("list")
-def list_repos():
-    """List all tracked directories."""
-    config = load_config()
+        # Remove symlink and move file back
+        file.unlink()
+        shutil.move(str(target), str(file))
 
-    if not config.repos:
-        rprint(
-            "[yellow]No directories tracked.[/yellow] Use 'homeslice add <path>' to add one."
-        )
-        return
+        # Remove from config
+        if normalized in config.links:
+            config.links.remove(normalized)
+            modified = True
 
-    table = Table(title="Tracked Directories")
-    table.add_column("Name", style="cyan")
-    table.add_column("Path", style="dim")
-    table.add_column("Home Dir", style="blue")
-    table.add_column("Status")
+        rprint(f"[green]Removed:[/green] {rel_path}")
 
-    for name, repo in sorted(config.repos.items()):
-        home_path = get_home_subdir(repo)
-        if not repo.path.exists():
-            status = "[red]missing[/red]"
-        elif not home_path.exists():
-            status = f"[yellow]no {repo.home_dir}/[/yellow]"
-        else:
-            status = "[green]ok[/green]"
-
-        table.add_row(name, str(repo.path), repo.home_dir, status)
-
-    console.print(table)
+    if modified:
+        save_repo_config(repo_root, config)
 
 
 @app.command()
 def link(
-    repos: Annotated[
-        Optional[list[str]], typer.Argument(help="Repos to link (default: all)")
-    ] = None,
     force: Annotated[
         bool, typer.Option("--force", "-f", help="Overwrite existing files")
     ] = False,
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", "-n", help="Show what would be done")
+    ] = False,
 ):
-    """Create symlinks from repo(s) to home directory."""
-    config = load_config()
-
-    if not config.repos:
-        rprint("[yellow]No directories tracked.[/yellow]")
-        return
-
-    repo_names = repos if repos else list(config.repos.keys())
-
-    for name in repo_names:
-        if name not in config.repos:
-            rprint(f"[red]Error:[/red] '{name}' not found")
-            continue
-
-        repo = config.repos[name]
-        rprint(f"\n[bold blue]{name}[/bold blue]")
-        _link_repo(repo, config, force)
-
-
-def _link_repo(repo: RepoConfig, config: Config, force: bool = False):
-    """Link a single repo."""
-    links = iter_linkable_files(repo, config)
+    """Create symlinks from repo to home directory."""
+    repo_root = get_repo_root()
+    config = load_repo_config(repo_root)
+    links = iter_linkable_files(repo_root, config)
 
     if not links:
-        rprint("  [dim]No files to link[/dim]")
+        rprint("[dim]No files to link[/dim]")
         return
 
-    for source, target in links:
-        rel_target = target.relative_to(HOME)
+    for source, target, rel_path in links:
+        if not source.exists():
+            rprint(f"[red]Missing:[/red]   {rel_path} (not in repo)")
+            continue
+
+        if dry_run:
+            if target.is_symlink() and target.resolve() == source.resolve():
+                rprint(f"[dim]Identical:[/dim] {rel_path}")
+            elif target.exists():
+                if force:
+                    rprint(f"[yellow]Would overwrite:[/yellow] {rel_path}")
+                else:
+                    rprint(f"[yellow]Conflict:[/yellow]  {rel_path} (use --force)")
+            else:
+                rprint(f"[green]Would link:[/green] {rel_path}")
+            continue
+
         status = create_symlink(source, target, force)
 
         if status == "linked":
-            rprint(f"  [green]linked[/green]    {rel_target}")
+            rprint(f"[green]Linked:[/green]    {rel_path}")
         elif status == "identical":
-            rprint(f"  [dim]identical[/dim] {rel_target}")
+            rprint(f"[dim]Identical:[/dim] {rel_path}")
         elif status == "conflict":
-            rprint(
-                f"  [yellow]conflict[/yellow]  {rel_target} (use --force to overwrite)"
-            )
+            rprint(f"[yellow]Conflict:[/yellow]  {rel_path} (use --force)")
         else:
-            rprint(f"  [red]{status}[/red] {rel_target}")
+            rprint(f"[red]Error:[/red]     {rel_path}: {status}")
 
 
 @app.command()
 def unlink(
-    repos: Annotated[
-        Optional[list[str]], typer.Argument(help="Repos to unlink (default: all)")
-    ] = None,
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", "-n", help="Show what would be done")
+    ] = False,
 ):
-    """Remove symlinks for repo(s)."""
-    config = load_config()
-
-    if not config.repos:
-        rprint("[yellow]No directories tracked.[/yellow]")
-        return
-
-    repo_names = repos if repos else list(config.repos.keys())
-
-    for name in repo_names:
-        if name not in config.repos:
-            rprint(f"[red]Error:[/red] '{name}' not found")
-            continue
-
-        repo = config.repos[name]
-        rprint(f"\n[bold blue]{name}[/bold blue]")
-        _unlink_repo(repo, config)
-
-
-def _unlink_repo(repo: RepoConfig, config: Config):
-    """Unlink a single repo."""
-    links = iter_linkable_files(repo, config)
+    """Remove symlinks for this repo (keeps files in repo)."""
+    repo_root = get_repo_root()
+    config = load_repo_config(repo_root)
+    links = iter_linkable_files(repo_root, config)
 
     if not links:
-        rprint("  [dim]No files to unlink[/dim]")
+        rprint("[dim]No files to unlink[/dim]")
         return
 
-    for source, target in links:
-        rel_target = target.relative_to(HOME)
+    for source, target, rel_path in links:
+        if dry_run:
+            if target.is_symlink() and target.resolve() == source.resolve():
+                rprint(f"[green]Would unlink:[/green] {rel_path}")
+            elif target.is_symlink():
+                rprint(f"[yellow]Skipped:[/yellow]  {rel_path} (points elsewhere)")
+            elif target.exists():
+                rprint(f"[yellow]Skipped:[/yellow]  {rel_path} (not a symlink)")
+            continue
+
         status = remove_symlink(source, target)
 
         if status == "unlinked":
-            rprint(f"  [green]unlinked[/green]  {rel_target}")
+            rprint(f"[green]Unlinked:[/green] {rel_path}")
         elif status == "missing":
-            pass  # Silent for missing
+            pass
         elif status == "not_symlink":
-            rprint(f"  [yellow]skipped[/yellow]   {rel_target} (not a symlink)")
+            rprint(f"[yellow]Skipped:[/yellow]  {rel_path} (not a symlink)")
         elif status == "different":
-            rprint(f"  [yellow]skipped[/yellow]   {rel_target} (points elsewhere)")
+            rprint(f"[yellow]Skipped:[/yellow]  {rel_path} (points elsewhere)")
 
 
-@app.command()
-def track(
-    file: Annotated[Path, typer.Argument(help="File or directory to track")],
-    repo: Annotated[str, typer.Argument(help="Repo to add the file to")],
-):
-    """Move a file/directory into a repo and replace with symlink."""
-    config = load_config()
+@app.command("list")
+@app.command("status")
+def status():
+    """Show status of tracked files."""
+    repo_root = get_repo_root()
+    config = load_repo_config(repo_root)
+    source_dir = get_source_dir(repo_root, config)
 
-    if repo not in config.repos:
-        rprint(f"[red]Error:[/red] '{repo}' not found")
-        raise typer.Exit(1)
+    rprint(f"[bold]Repo:[/bold] {repo_root}")
+    rprint(f"[bold]Config:[/bold] {repo_root / REPO_CONFIG_FILENAME}")
+    if config.source_dir:
+        rprint(f"[bold]Source dir:[/bold] {source_dir}")
+    rprint()
 
-    repo_config = config.repos[repo]
-    home_dir = get_home_subdir(repo_config)
+    links = iter_linkable_files(repo_root, config)
+    if not links:
+        rprint("[dim]No files tracked[/dim]")
+        return
 
-    file = file.expanduser().resolve()
-
-    if not file.exists():
-        rprint(f"[red]Error:[/red] File does not exist: {file}")
-        raise typer.Exit(1)
-
-    if not str(file).startswith(str(HOME)):
-        rprint("[red]Error:[/red] File must be in home directory")
-        raise typer.Exit(1)
-
-    # Calculate relative path from home
-    rel_path = file.relative_to(HOME)
-    target_path = home_dir / rel_path
-
-    if target_path.exists():
-        rprint(f"[red]Error:[/red] Already tracked: {rel_path}")
-        raise typer.Exit(1)
-
-    # Create parent directories
-    target_path.parent.mkdir(parents=True, exist_ok=True)
-
-    # Move file to repo
-    shutil.move(str(file), str(target_path))
-    rprint(f"[blue]Moved[/blue]   {rel_path} -> {target_path}")
-
-    # Create symlink
-    rel_source = os.path.relpath(target_path, file.parent)
-    file.symlink_to(rel_source)
-    rprint(f"[green]Linked[/green]  {rel_path}")
-
-
-@app.command()
-def untrack(
-    file: Annotated[Path, typer.Argument(help="Symlinked file to untrack")],
-):
-    """Move a tracked file back to home and remove from repo."""
-    config = load_config()
-
-    file = file.expanduser().resolve()
-
-    if not file.is_symlink():
-        rprint(f"[red]Error:[/red] Not a symlink: {file}")
-        raise typer.Exit(1)
-
-    # Resolve where the symlink points
-    target = file.resolve()
-
-    # Find which repo this belongs to
-    found_repo = None
-    for repo in config.repos.values():
-        home_dir = get_home_subdir(repo)
-        try:
-            target.relative_to(home_dir)
-            found_repo = repo
-            break
-        except ValueError:
-            continue
-
-    if not found_repo:
-        rprint("[red]Error:[/red] File is not tracked by any repo")
-        raise typer.Exit(1)
-
-    # Remove symlink and move file back
-    file.unlink()
-    shutil.move(str(target), str(file))
-
-    rel_path = file.relative_to(HOME)
-    rprint(f"[green]Untracked[/green] {rel_path}")
-
-
-@app.command()
-def ignore(
-    pattern: Annotated[str, typer.Argument(help="Glob pattern to ignore")],
-    repo: Annotated[
-        Optional[str],
-        typer.Option("--repo", "-r", help="Add to specific repo (default: global)"),
-    ] = None,
-):
-    """Add an ignore pattern."""
-    config = load_config()
-
-    if repo:
-        if repo not in config.repos:
-            rprint(f"[red]Error:[/red] '{repo}' not found")
-            raise typer.Exit(1)
-        config.repos[repo].ignore.append(pattern)
-        rprint(f"[green]Added to {repo}:[/green] {pattern}")
-    else:
-        config.default_ignore.append(pattern)
-        rprint(f"[green]Added globally:[/green] {pattern}")
-
-    save_config(config)
+    for source, target, rel_path in links:
+        if not source.exists():
+            rprint(f"  [red]✗[/red] {rel_path} (missing from repo)")
+        elif target.is_symlink() and target.resolve() == source.resolve():
+            rprint(f"  [green]✓[/green] {rel_path}")
+        elif target.exists():
+            rprint(f"  [yellow]![/yellow] {rel_path} (conflict)")
+        else:
+            rprint(f"  [dim]○[/dim] {rel_path} (not linked)")
 
 
 @app.command()
 def show(
-    name: Annotated[str, typer.Argument(help="Repo name")],
+    file: Annotated[Path, typer.Argument(help="File to show details for")],
 ):
-    """Show details and linkable files for a repo."""
-    config = load_config()
+    """Show details for a specific tracked file."""
+    repo_root = get_repo_root()
+    config = load_repo_config(repo_root)
+    source_dir = get_source_dir(repo_root, config)
 
-    if name not in config.repos:
-        rprint(f"[red]Error:[/red] '{name}' not found")
+    file = Path(file).expanduser().absolute()
+
+    # Get relative path
+    try:
+        rel_path = str(file.relative_to(HOME))
+    except ValueError:
+        rprint("[red]Error:[/red] File must be in home directory")
         raise typer.Exit(1)
 
-    repo = config.repos[name]
-    home_dir = get_home_subdir(repo)
+    normalized = normalize_path(rel_path)
+    source = source_dir / normalized
+    target = HOME / normalized
 
-    rprint(f"[bold]{name}[/bold]")
-    rprint(f"  Path: {repo.path}")
-    rprint(f"  Home dir: {repo.home_dir}")
-    rprint(f"  Ignore: {repo.ignore or '(none)'}")
+    rprint(f"[bold]{rel_path}[/bold]")
     rprint()
 
-    if not home_dir.exists():
-        rprint(f"  [yellow]Warning:[/yellow] {home_dir} does not exist")
-        return
+    # Check if tracked
+    is_tracked = normalized in config.links
+    rprint(f"  Tracked: {'yes' if is_tracked else 'no'}")
 
-    links = iter_linkable_files(repo, config)
-    if links:
-        rprint("  [bold]Linkable files:[/bold]")
-        for source, target in links:
-            rel_target = target.relative_to(HOME)
-            if target.is_symlink() and target.resolve() == source.resolve():
-                rprint(f"    [green]✓[/green] {rel_target}")
-            elif target.exists():
-                rprint(f"    [yellow]![/yellow] {rel_target} (exists)")
-            else:
-                rprint(f"    [dim]○[/dim] {rel_target}")
+    # Check status
+    if source.exists():
+        rprint(f"  In repo: {source}")
     else:
-        rprint("  [dim]No linkable files[/dim]")
+        rprint("  In repo: [dim]not found[/dim]")
+
+    if target.is_symlink():
+        link_target = os.readlink(target)
+        resolved = target.resolve()
+        if resolved == source.resolve():
+            rprint("  Status:  [green]linked[/green]")
+        else:
+            rprint("  Status:  [yellow]symlink to different target[/yellow]")
+        rprint(f"  Link:    {target} -> {link_target}")
+    elif target.exists():
+        rprint("  Status:  [yellow]conflict (file exists)[/yellow]")
+        rprint(f"  Path:    {target}")
+    else:
+        rprint("  Status:  [dim]not linked[/dim]")
 
 
 @app.command()
-def config_show():
-    """Show configuration file path and contents."""
-    if not CONFIG_FILE.exists():
-        rprint("[yellow]No config file.[/yellow] Run 'homeslice init' first.")
-        rprint(f"Path: {CONFIG_FILE}")
-        return
+def config():
+    """Show configuration."""
+    global_config = load_global_config()
 
-    rprint(f"[bold]Config:[/bold] {CONFIG_FILE}\n")
-    rprint(CONFIG_FILE.read_text())
+    rprint(f"[bold]Global config:[/bold] {GLOBAL_CONFIG_FILE}")
+    if global_config.repo_path:
+        rprint(f"  repo_path: {global_config.repo_path}")
+    else:
+        rprint("  [dim](no repo configured)[/dim]")
+
+    rprint()
+
+    try:
+        repo_root = get_repo_root()
+        repo_config = load_repo_config(repo_root)
+        rprint(f"[bold]Repo config:[/bold] {repo_root / REPO_CONFIG_FILENAME}")
+        if repo_config.source_dir:
+            rprint(f"  source_dir: {repo_config.source_dir}")
+        rprint(f"  links: {len(repo_config.links)} files")
+        if repo_config.include:
+            rprint(f"  include: {len(repo_config.include)} partial folders")
+    except SystemExit:
+        pass
 
 
 @app.command()

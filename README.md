@@ -1,6 +1,6 @@
 # homeslice
 
-A dotfile management tool that symlinks files from local directories to your home directory.
+A dotfile management tool that symlinks files from a dotfiles directory to your home directory.
 
 ## Installation
 
@@ -17,64 +17,88 @@ uv run homeslice --help
 ## Quick Start
 
 ```bash
-# Initialize config
+# Create/navigate to your dotfiles directory
+mkdir ~/dotfiles && cd ~/dotfiles
+
+# Initialize as a homeslice repo
 homeslice init
 
-# Add a dotfiles directory
-homeslice add ~/dotfiles
+# Add files from your home directory
+homeslice add ~/.bashrc ~/.gitconfig
 
-# Create symlinks
-homeslice link
+# Add a folder
+homeslice add ~/.config/nvim
 
-# Track a new file (moves it to repo and creates symlink)
-homeslice track ~/.bashrc dotfiles
+# Check status
+homeslice list
 ```
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `init` | Create config directory |
-| `add <path>` | Add a dotfiles directory to track |
-| `remove <name>` | Remove from tracking |
-| `list` | List tracked directories |
-| `link [repos...]` | Create symlinks to home |
-| `unlink [repos...]` | Remove symlinks |
-| `track <file> <repo>` | Move file into repo, create symlink |
-| `untrack <file>` | Move file back, remove from repo |
-| `show <name>` | Show repo details and linkable files |
-| `ignore <pattern>` | Add ignore pattern |
+| `init [path]` | Initialize a homeslice repo (default: current directory) |
+| `add <files...>` | Move file(s)/folder(s) from $HOME into repo and create symlinks |
+| `remove <files...>` | Move file(s)/folder(s) back to $HOME and remove from config |
+| `link` | Create symlinks for all tracked files |
+| `unlink` | Remove all symlinks (keeps files in repo) |
+| `list` / `status` | Show status of tracked files |
+| `show <file>` | Show details for a specific file |
+| `config` | Show global and repo configuration |
+| `version` | Show version |
 
 ## How It Works
 
-Homeslice tracks local directories containing dotfiles. Each directory should have a `home/` subdirectory with files structured as they should appear in your home directory:
+Run `homeslice init` in your dotfiles directory. This creates:
+- `homeslice.toml` - Configuration file listing tracked files
 
-```
-~/dotfiles/
-  home/
-    .bashrc
-    .config/
-      git/
-        config
-```
+When you `add` a file like `~/.bashrc`:
+1. The file is moved to `~/dotfiles/.bashrc`
+2. A symlink is created: `~/.bashrc` → `~/dotfiles/.bashrc`
+3. The path is added to `homeslice.toml`
 
-Running `homeslice link` creates symlinks:
-- `~/.bashrc` → `~/dotfiles/home/.bashrc`
-- `~/.config/git/config` → `~/dotfiles/home/.config/git/config`
-
-If a directory already exists in your home (like `~/.config`), homeslice descends into it rather than replacing it.
+When you `remove` a file:
+1. The symlink is removed
+2. The file is moved back to its original location
+3. The path is removed from `homeslice.toml`
 
 ## Configuration
 
-Config is stored at `~/.config/homeslice/config.toml`:
+Homeslice uses two config files:
+
+**Global config** (`~/.config/homeslice/config.toml`):
+```toml
+repo_path = "/path/to/your/dotfiles"
+```
+This is set automatically by `homeslice init` and allows commands to work from anywhere.
+
+**Repo config** (`homeslice.toml` in your dotfiles directory):
+```toml
+# Simple flat list of files and folders to track
+links = [
+    ".bashrc",
+    ".zshrc",
+    ".gitconfig",
+    ".config/nvim",
+    ".ssh",
+]
+
+# Optional: store dotfiles in a subdirectory (default: repo root)
+# source_dir = "home"
+```
+
+### Partial Folder Tracking
+
+When you only want specific files from a directory:
 
 ```toml
-default_ignore = [".git", ".gitignore", ".gitmodules", "README*", "LICENSE*"]
+links = [".bashrc", ".zshrc"]
 
-[repos.dotfiles]
-path = "/Users/you/dotfiles"
-home_dir = "home"
-ignore = []
+[include.".config/karabiner"]
+files = ["karabiner.json"]
+
+[include.".config/kitty"]
+files = ["kitty.conf", "theme.conf"]
 ```
 
 ## Development
@@ -85,6 +109,9 @@ uv sync
 
 # Run linting
 just lint
+
+# Bump version
+just bump
 
 # Run the CLI
 uv run homeslice --help

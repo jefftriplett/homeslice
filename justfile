@@ -10,3 +10,11 @@ _default:
 # Bump CalVer version (format: YYYY.MM.PATCH)
 @bump:
     uvx bumpver update --no-fetch
+
+# Run tests
+@test *args:
+    uv run pytest {{ args }}
+
+# Run tests with verbose output
+@test-v:
+    uv run pytest -v
