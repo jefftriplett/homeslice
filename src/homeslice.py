@@ -6,7 +6,7 @@ Manages dotfiles by symlinking files from local directories to your home directo
 
 from __future__ import annotations
 
-__version__ = "0.1.0"
+__version__ = "2026.1.2"
 
 import os
 import shutil

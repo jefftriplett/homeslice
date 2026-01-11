@@ -6,3 +6,7 @@ _default:
 @lint:
     uv tool run ruff check --fix
     uv tool run ruff format
+
+# Bump CalVer version (format: YYYY.MM.PATCH)
+@bump:
+    uvx bumpver update --no-fetch
