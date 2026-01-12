@@ -226,6 +226,24 @@ class TestIterLinkableFiles:
             expected_path,
         ) in links
 
+    def test_include_respects_ignore(self, fake_repo: Path, fake_home: Path):
+        config = RepoConfig(
+            include={
+                ".config/git": IncludeConfig(
+                    files=["config", "ignore"], ignore=["ignore"]
+                ),
+            },
+        )
+        links = iter_linkable_files(fake_repo, config)
+
+        assert len(links) == 1
+        expected_path = ".config/git/config"
+        assert (
+            fake_repo / expected_path,
+            fake_home / expected_path,
+            expected_path,
+        ) in links
+
     def test_uses_source_dir(self, fake_repo: Path, fake_home: Path):
         config = RepoConfig(links=[".bashrc"], source_dir="home")
         links = iter_linkable_files(fake_repo, config)
@@ -487,6 +505,28 @@ class TestAddCommand:
         assert (initialized_repo / ".config" / "nvim" / "init.lua").exists()
         assert nvim_dir.is_symlink()
 
+    def test_add_updates_include_and_removes_ignore(
+        self, fs: FakeFilesystem, initialized_repo: Path, fake_home: Path
+    ):
+        config = load_repo_config(initialized_repo)
+        config.include[".config/git"] = IncludeConfig(
+            files=["config"], ignore=["ignore"]
+        )
+        save_repo_config(initialized_repo, config)
+
+        git_ignore = fake_home / ".config" / "git" / "ignore"
+        fs.create_dir(git_ignore.parent)
+        fs.create_file(git_ignore, contents="*.local")
+
+        result = runner.invoke(app, ["add", str(git_ignore)])
+
+        assert result.exit_code == 0, result.output
+
+        updated = load_repo_config(initialized_repo)
+        inc_config = updated.include[".config/git"]
+        assert "ignore" in inc_config.files
+        assert "ignore" not in inc_config.ignore
+
 
 class TestRemoveCommand:
     def test_remove_moves_file_back(
@@ -521,6 +561,28 @@ class TestRemoveCommand:
         result = runner.invoke(app, ["remove", str(bashrc)])
 
         assert "Not a symlink" in result.output
+
+    def test_remove_updates_include(
+        self, fs: FakeFilesystem, initialized_repo: Path, fake_home: Path
+    ):
+        config = load_repo_config(initialized_repo)
+        config.include[".config/git"] = IncludeConfig(files=["config"])
+        save_repo_config(initialized_repo, config)
+
+        repo_file = initialized_repo / ".config" / "git" / "config"
+        fs.create_file(repo_file, contents="[user]\n")
+        home_file = fake_home / ".config" / "git" / "config"
+        fs.create_dir(home_file.parent)
+        fs.create_symlink(home_file, repo_file)
+
+        result = runner.invoke(app, ["remove", str(home_file)])
+
+        assert result.exit_code == 0, result.output
+
+        updated = load_repo_config(initialized_repo)
+        assert ".config/git" not in updated.include or "config" not in (
+            updated.include[".config/git"].files
+        )
 
 
 class TestLinkCommand:
@@ -651,6 +713,24 @@ class TestShowCommand:
         assert ".bashrc" in result.output
         assert "Tracked: yes" in result.output
         assert "linked" in result.output
+
+    def test_show_tracks_include(
+        self, fs: FakeFilesystem, initialized_repo: Path, fake_home: Path
+    ):
+        config = load_repo_config(initialized_repo)
+        config.include[".config/git"] = IncludeConfig(files=["config"])
+        save_repo_config(initialized_repo, config)
+
+        repo_file = initialized_repo / ".config" / "git" / "config"
+        fs.create_file(repo_file, contents="[user]\n")
+        home_file = fake_home / ".config" / "git" / "config"
+        fs.create_dir(home_file.parent)
+        fs.create_symlink(home_file, repo_file)
+
+        result = runner.invoke(app, ["show", str(home_file)])
+
+        assert result.exit_code == 0, result.output
+        assert "Tracked: yes" in result.output
 
 
 class TestVersionCommand:
