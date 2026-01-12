@@ -4,6 +4,16 @@ homeslice - A dotfile management and synchronization tool.
 Manages dotfiles by symlinking files from a dotfiles directory to your home directory.
 """
 
+# /// script
+# requires-python = "3.11"
+# dependencies = [
+#   "pydantic",
+#   "rich",
+#   "tomli-w",
+#   "typer",
+# ]
+# ///
+
 from __future__ import annotations
 
 __version__ = "2026.1.2"
