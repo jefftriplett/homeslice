@@ -195,6 +195,36 @@ def normalize_path(path: str) -> str:
     return path
 
 
+def get_include_entry_for_rel_path(
+    rel_path: str, config: RepoConfig
+) -> tuple[str, IncludeConfig] | None:
+    """Find the include entry for a tracked file path."""
+    parts = Path(rel_path).parts
+    if len(parts) <= 1:
+        return None
+
+    parent = normalize_path("/".join(parts[:-1]))
+    for folder_path, inc_config in config.include.items():
+        if normalize_path(folder_path) == parent:
+            return folder_path, inc_config
+    return None
+
+
+def is_tracked_path(rel_path: str, config: RepoConfig) -> bool:
+    """Check if a path is tracked via links or include."""
+    normalized = normalize_path(rel_path)
+    if normalized in config.links:
+        return True
+
+    include_entry = get_include_entry_for_rel_path(normalized, config)
+    if not include_entry:
+        return False
+
+    _, inc_config = include_entry
+    filename = Path(normalized).name
+    return filename in inc_config.files
+
+
 # =============================================================================
 # Symlink Operations
 # =============================================================================
@@ -222,7 +252,10 @@ def iter_linkable_files(
 
     # Process include sections (partial folder tracking)
     for folder_path, inc_config in config.include.items():
+        ignore = set(inc_config.ignore)
         for filename in inc_config.files:
+            if filename in ignore:
+                continue
             rel_path = f"{folder_path}/{filename}"
             source = source_dir / rel_path
             target = HOME / rel_path
@@ -365,7 +398,7 @@ def add(
 
         # Check if already in config
         normalized = normalize_path(rel_path)
-        if normalized in config.links:
+        if is_tracked_path(normalized, config):
             rprint(f"[yellow]Skipping:[/yellow] {rel_path} (already tracked)")
             continue
 
@@ -378,7 +411,17 @@ def add(
         file.symlink_to(rel_source)
 
         # Add to config
-        config.links.append(normalized)
+        include_entry = get_include_entry_for_rel_path(normalized, config)
+        if include_entry:
+            _, inc_config = include_entry
+            filename = target_path.name
+            if filename in inc_config.ignore:
+                inc_config.ignore.remove(filename)
+            if filename not in inc_config.files:
+                inc_config.files.append(filename)
+                inc_config.files.sort()
+        else:
+            config.links.append(normalized)
         modified = True
 
         rprint(f"[green]Added:[/green] {rel_path}")
@@ -420,12 +463,21 @@ def remove(
 
         rel_path = str(file.relative_to(HOME))
         normalized = normalize_path(rel_path)
+        include_entry = get_include_entry_for_rel_path(normalized, config)
 
         # Remove symlink and move file back
         file.unlink()
         shutil.move(str(target), str(file))
 
         # Remove from config
+        if include_entry:
+            folder_path, inc_config = include_entry
+            filename = Path(normalized).name
+            if filename in inc_config.files:
+                inc_config.files.remove(filename)
+                if not inc_config.files and not inc_config.ignore:
+                    del config.include[folder_path]
+                modified = True
         if normalized in config.links:
             config.links.remove(normalized)
             modified = True
@@ -576,7 +628,7 @@ def show(
     rprint()
 
     # Check if tracked
-    is_tracked = normalized in config.links
+    is_tracked = is_tracked_path(normalized, config)
     rprint(f"  Tracked: {'yes' if is_tracked else 'no'}")
 
     # Check status
